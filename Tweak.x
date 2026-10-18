@@ -2,7 +2,7 @@
 // The refraction maths is ported from "Backdrop" by Kyant (Apache-2.0), see NOTICE.txt.
 // Changes from the original AGSL: ported to Metal (MSL); the corner radius is read from the
 // centred coordinate (the original used the raw coordinate); chromatic aberration uses 3 taps
-// instead of 7. The Dock interior stays the system's own live blur material (real-time, no flicker, no
+// instead of 7. The Dock interior stays the stock system live blur material (real-time, no flicker, no
 // icon ghosting); this tweak adds the white veil, glow and rim, and refracts a one-time wallpaper capture at the rim.
 #import <UIKit/UIKit.h>
 #import <Metal/Metal.h>
@@ -181,7 +181,7 @@ static void onNotify(CFNotificationCenterRef c, void *o, CFNotificationName n, c
     dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(2.5 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{ LGRecapture(); });
   }
   if (!CGRectEqualToRect(g.frame, bg.frame)) g.frame = bg.frame;
-  // keep the system's live blur material, but give it the same corner shape as the glass
+  // keep the stock system live blur material, but give it the same corner shape as the glass
   CGFloat rr = MIN(LG_CORNER, MIN(bg.bounds.size.width, bg.bounds.size.height) / 2);
   bg.layer.cornerRadius = rr; bg.layer.cornerCurve = kCACornerCurveContinuous; bg.clipsToBounds = YES;
 }
@@ -198,86 +198,6 @@ static void onNotify(CFNotificationCenterRef c, void *o, CFNotificationName n, c
   pd.colorAttachments[0].pixelFormat = MTLPixelFormatBGRA8Unorm;
   gPSO = [gDev newRenderPipelineStateWithDescriptor:pd error:&e];
   if (!gPSO) { NSLog(@"[LGDock] pipeline error: %@", e); return; }
-  CFNotificationCenterAddObserver(CFNotificationCenterGetDarwinNotifyCenter(), NULL, onNotify, CFSTR("com.example.liquidglassdock.recapture"), NULL, CFNotificationSuspensionBehaviorDeliverImmediately);
-  %init;
-  NSLog(@"[LGDock] ready");
-}
-enderPipelineState:gPSO]; [en setFragmentBytes:&uu length:sizeof(uu) atIndex:0]; [en setFragmentTexture:gTex atIndex:0];
-      [en drawPrimitives:MTLPrimitiveTypeTriangle vertexStart:0 vertexCount:3]; [en endEncoding];
-      [cb presentDrawable:dr];
-    }
-    [cb commit]; [cb waitUntilCompleted];
-    dispatch_async(dispatch_get_main_queue(), ^{ gBusy = NO; });
-  });
-}
-
-static BOOL LGShouldRun(void) {
-  UIView *d = gDock; if (!d || !d.window) return NO;
-  for (UIView *v = d; v; v = v.superview) if (v.hidden || v.alpha < 0.01) return NO;
-  if (gBlankTok >= 0) { uint64_t st = 0; notify_get_state(gBlankTok, &st); if (st) return NO; }
-  return YES;
-}
-
-@interface LGTicker : NSObject @end
-@implementation LGTicker
-- (void)tick:(CADisplayLink *)l { if (LGShouldRun()) LGFrame(); }
-@end
-
-static void LGStart(void) {
-#if LG_LIVE
-  if (gLink) return;
-  static LGTicker *tk; tk = [LGTicker new];
-  gLink = [CADisplayLink displayLinkWithTarget:tk selector:@selector(tick:)];
-  gLink.preferredFramesPerSecond = LG_FPS;
-  [gLink addToRunLoop:NSRunLoop.mainRunLoop forMode:NSRunLoopCommonModes];
-  NSLog(@"[LGDock] live capture started (%d fps)", LG_FPS);
-#else
-  dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(2.5 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{ LGFrame(); });
-#endif
-}
-static void onNotify(CFNotificationCenterRef c, void *o, CFNotificationName n, const void *obj, CFDictionaryRef i) {
-  dispatch_async(dispatch_get_main_queue(), ^{ LGFrame(); });
-}
-
-@interface SBDockView : UIView @end
-%hook SBDockView
-- (void)layoutSubviews {
-  %orig;
-  UIView *bg = nil;
-  for (NSString *k in @[@"backgroundView", @"_backgroundView"]) {
-    @try { bg = [self valueForKey:k]; } @catch (NSException *e) { bg = nil; }
-    if ([bg isKindOfClass:UIView.class]) break;
-  }
-  if (![bg isKindOfClass:UIView.class]) {
-    static BOOL once; if (!once) { once = YES; NSLog(@"[LGDock] SBDockView has no backgroundView; subviews: %@", self.subviews); }
-    return;
-  }
-  LGGlass *g = objc_getAssociatedObject(self, &kGlassKey);
-  if (!g) {
-    g = [[LGGlass alloc] initWithFrame:bg.frame];
-    objc_setAssociatedObject(self, &kGlassKey, g, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
-    [self insertSubview:g aboveSubview:bg];
-    gDock = self;
-    NSLog(@"[LGDock] glass attached over %@", NSStringFromClass(bg.class));
-    LGStart();
-  }
-  if (!CGRectEqualToRect(g.frame, bg.frame)) g.frame = bg.frame;
-  bg.alpha = 0;
-}
-%end
-
-%ctor {
-  gDev = MTLCreateSystemDefaultDevice(); if (!gDev) { NSLog(@"[LGDock] no Metal device"); return; }
-  gQ = [gDev newCommandQueue];
-  NSError *e = nil;
-  id<MTLLibrary> lib = [gDev newLibraryWithSource:[@"#include <metal_stdlib>\nusing namespace metal;\n" stringByAppendingString:kMSL] options:nil error:&e];
-  if (!lib) { NSLog(@"[LGDock] MSL compile error: %@", e); return; }
-  MTLRenderPipelineDescriptor *pd = [MTLRenderPipelineDescriptor new];
-  pd.vertexFunction = [lib newFunctionWithName:@"vmain"]; pd.fragmentFunction = [lib newFunctionWithName:@"fmain"];
-  pd.colorAttachments[0].pixelFormat = MTLPixelFormatBGRA8Unorm;
-  gPSO = [gDev newRenderPipelineStateWithDescriptor:pd error:&e];
-  if (!gPSO) { NSLog(@"[LGDock] pipeline error: %@", e); return; }
-  notify_register_check("com.apple.springboard.hasBlankedScreen", &gBlankTok);
   CFNotificationCenterAddObserver(CFNotificationCenterGetDarwinNotifyCenter(), NULL, onNotify, CFSTR("com.example.liquidglassdock.recapture"), NULL, CFNotificationSuspensionBehaviorDeliverImmediately);
   %init;
   NSLog(@"[LGDock] ready");
