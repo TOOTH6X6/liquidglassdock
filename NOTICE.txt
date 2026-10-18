@@ -1,0 +1,8 @@
+LiquidGlassDock
+This project includes a Metal port of the refraction, rounded-rectangle SDF and rim-highlight
+algorithms from "Backdrop" (AndroidLiquidGlass-kmp) by Kyant,
+Copyright 2025 Kyant, licensed under the Apache License, Version 2.0 (see LICENSE).
+
+Changes: rewritten from AGSL/Kotlin to Metal Shading Language and Objective-C; corner radius
+is selected from the centred coordinate; chromatic aberration reduced to 3 samples; blur is a
+one-time MPS Gaussian blur; added screen capture and SpringBoard Dock hook.
