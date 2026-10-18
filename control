@@ -1,0 +1,9 @@
+Package: com.example.liquidglassdock
+Name: LiquidGlassDock
+Version: 0.1.0
+Architecture: iphoneos-arm
+Description: Dock แบบ Liquid Glass (ทดลอง)
+Maintainer: Your Name
+Author: Your Name
+Section: Tweaks
+Depends: mobilesubstrate
