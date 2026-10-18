@@ -25,7 +25,7 @@
 #define LG_GLOW 0.05             // soft inner glow near the edge
 // ---- real-time ----
 #define LG_LIVE 1                // 1 = real-time (Dock hidden from capture via disableUpdateMask), 0 = old one-shot capture
-#define LG_FPS 30                // capture/render rate while the Dock is visible
+#define LG_FPS 60                // capture/render rate while the Dock is visible
 #define LG_MASK_BITS 0x12        // CALayer disableUpdateMask bits: hide from screenshots / recording
 #define LG_TAG(...) @#__VA_ARGS__
 
@@ -173,6 +173,7 @@ static void LGFrame(void) {
     dispatch_async(dispatch_get_main_queue(), ^{ LGHide(NO); });
     id<MTLCommandBuffer> cb = [gQ commandBuffer];
     gBlur.clipRect = clip;
+    gBlur.offset = (MPSOffset){ .x = x0, .y = y0, .z = 0 };
     [gBlur encodeToCommandBuffer:cb sourceTexture:gSrc destinationTexture:gTex];
     id<CAMetalDrawable> dr = [ml nextDrawable];
     if (dr) {
