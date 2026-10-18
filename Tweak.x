@@ -152,8 +152,7 @@ static void LGFrame(void) {
   CAMetalLayer *ml = (CAMetalLayer *)g.layer;
   if (ml.drawableSize.width < 1 || ml.drawableSize.height < 1) return;
   CGFloat sc = UIScreen.mainScreen.scale;
-  CALayer *pl = g.layer.presentationLayer ?: g.layer; CALayer *wl = g.window.layer.presentationLayer ?: g.window.layer;
-  CGRect r = [pl convertRect:pl.bounds toLayer:wl];
+  CGRect r = [g convertRect:g.bounds toView:nil];  // window coords (= screen coords for the SpringBoard window)
   CGFloat m = (LG_REFRACT_AMOUNT + 3.0 * LG_BLUR_SIGMA + 4.0) * sc;
   NSInteger x0 = MAX(0, (NSInteger)floor(r.origin.x * sc - m)), y0 = MAX(0, (NSInteger)floor(r.origin.y * sc - m));
   NSInteger x1 = MIN((NSInteger)gW, (NSInteger)ceil((r.origin.x + r.size.width) * sc + m));
