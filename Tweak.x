@@ -89,7 +89,7 @@ static MPSImageGaussianBlur *gBlur;
 static void (*gCapFn)(uint32_t, CFStringRef, IOSurfaceRef, int, int);
 static dispatch_queue_t gCapQ;
 static CADisplayLink *gLink; static BOOL gBusy;
-static uint32_t gOldMask; static CGFloat gOldAlpha;
+static uint32_t gOldMask __attribute__((unused)); static CGFloat gOldAlpha __attribute__((unused));
 static int gBlankTok = -1;
 
 @interface LGGlass : UIView @end
